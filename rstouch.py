@@ -16,8 +16,8 @@ pi = pigpio.pi()
 
 NUM_GPIO = 32
 
-MIN_WIDTH = 1700
-MAX_WIDTH = 2000
+MIN_WIDTH = 500
+MAX_WIDTH = 610
 min_sec = float(sys.argv[1])
 ran_1 = float(sys.argv[2])
 ran_2 = float(sys.argv[3])
@@ -27,7 +27,7 @@ while True:
    try:
 
         pi.set_servo_pulsewidth(18, MIN_WIDTH)
-        time.sleep(0.2)
+        time.sleep(0.1)
         pi.set_servo_pulsewidth(18, MAX_WIDTH)
         time.sleep(min_sec)
         time.sleep(random.uniform(ran_1,ran_2))
@@ -39,4 +39,3 @@ print("\nTidying up")
 pi.set_servo_pulsewidth(18, 0)
 
 pi.stop()
-

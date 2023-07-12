@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 
 # servo_demo.py
@@ -12,35 +11,80 @@ import sys
 import time
 import random
 import pigpio
+from multiprocessing import Process
 
 pi = pigpio.pi()
 
-NUM_GPIO = 12
-pi.set_mode(NUM_GPIO, pigpio.OUTPUT)
-pi.set_PWM_frequency(NUM_GPIO, 50)
+MAIN_NUM_GPIO = 18
+MAIN_TEST_WIDTH = 530
+MAIN_MIN_WIDTH = 500
+MAIN_MAX_WIDTH = 610
+MAIN_MIN_SEC = float(sys.argv[1])
+MAIN_RAN_1 = float(sys.argv[2])
+MAIN_RAN_2 = float(sys.argv[3])
+pi.set_mode(MAIN_NUM_GPIO, pigpio.OUTPUT)
+pi.set_PWM_frequency(MAIN_NUM_GPIO, 50)
 
-MIN_WIDTH = 630
-MAX_WIDTH = 500
-min_sec = float(sys.argv[1])
-ran_1 = float(sys.argv[2])
-ran_2 = float(sys.argv[3])
 
-while True:
+EXTRA_NUM_GPIO = 12
+EXTRA_TEST_WIDTH = 600
+EXTRA_MIN_WIDTH = 630
+EXTRA_MAX_WIDTH = 500
+EXTRA_MIN_SEC = float(sys.argv[4])
+EXTRA_RAN_1 = float(sys.argv[5])
+EXTRA_RAN_2 = float(sys.argv[6])
+pi.set_mode(EXTRA_NUM_GPIO, pigpio.OUTPUT)
+pi.set_PWM_frequency(EXTRA_NUM_GPIO, 50)
 
-   try:
+OFFSET = float(sys.argv[7])
 
-        pi.set_servo_pulsewidth(NUM_GPIO, MIN_WIDTH)
-        time.sleep(0.1)
-        pi.set_servo_pulsewidth(NUM_GPIO, MAX_WIDTH)
-        time.sleep(min_sec)
-        time.sleep(random.uniform(ran_1,ran_2))
-
-   except KeyboardInterrupt:
+def loop_main():
+  while True:
+    try:
+      pi.set_servo_pulsewidth(MAIN_NUM_GPIO, MAIN_MIN_WIDTH)
+      time.sleep(0.1)
+      pi.set_servo_pulsewidth(MAIN_NUM_GPIO, MAIN_MAX_WIDTH)
+      time.sleep(MAIN_MIN_SEC)
+      time.sleep(random.uniform(MAIN_RAN_1,MAIN_RAN_2))
+    except KeyboardInterrupt:
+      print('got interrupt main')
       break
 
-print("\nTidying up")
-pi.set_servo_pulsewidth(NUM_GPIO, 0)
-pi.set_PWM_dutycycle(NUM_GPIO, 0)
-pi.set_PWM_frequency(NUM_GPIO, 0)
+def loop_extra():
+  while True:
+    try:
+      pi.set_servo_pulsewidth(EXTRA_NUM_GPIO, EXTRA_MIN_WIDTH)
+      time.sleep(0.1)
+      pi.set_servo_pulsewidth(EXTRA_NUM_GPIO, EXTRA_MAX_WIDTH)
+      time.sleep(EXTRA_MIN_SEC)
+      time.sleep(random.uniform(EXTRA_RAN_1,EXTRA_RAN_2))
+    except KeyboardInterrupt:
+      print('got interrupt extra')
+      break
 
-pi.stop()
+def test_location():
+  pi.set_servo_pulsewidth(MAIN_NUM_GPIO, MAIN_TEST_WIDTH)
+  pi.set_servo_pulsewidth(EXTRA_NUM_GPIO, EXTRA_TEST_WIDTH)
+  time.sleep(10)
+  pi.set_servo_pulsewidth(MAIN_NUM_GPIO, MAIN_MAX_WIDTH)
+  pi.set_servo_pulsewidth(EXTRA_NUM_GPIO, EXTRA_MAX_WIDTH)
+  time.sleep(2)
+
+
+p_main = Process(target=loop_main)
+p_extra = Process(target=loop_extra)
+try:
+  test_location()
+  p_main.start()
+  time.sleep(OFFSET)
+  p_extra.start()
+  p_main.join()
+  p_extra.join()
+except KeyboardInterrupt:
+  p_main.terminate()
+  p_extra.terminate()
+  print("\nTidying up")
+  pi.set_servo_pulsewidth(EXTRA_NUM_GPIO, 0)
+  pi.set_PWM_dutycycle(EXTRA_NUM_GPIO, 0)
+  pi.set_PWM_frequency(EXTRA_NUM_GPIO, 0)
+  pi.stop()
